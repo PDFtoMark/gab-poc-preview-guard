@@ -1,0 +1,49 @@
+name: guard-poc
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: guard-poc-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: Guard probe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            console.log('commenter:', context.payload.comment.user.login);
+            console.log('association:', context.payload.comment.author_association);
+            for (const u of ['Ety60', 'lazyhacker6', 'no-such-user-zz9x']) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  username: u,
+                });
+                console.log(`${u}: 200 permission=${data.permission}`);
+              } catch (e) {
+                console.log(`${u}: error status=${e.status} message=${e.message}`);
+              }
+            }
+
+  sleeper:
+    name: Sleeper
+    if: github.event.comment.body == 'preview'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Long step
+        run: |
+          echo "start $(date -u)"
+          sleep 150
+          echo "end $(date -u)"
